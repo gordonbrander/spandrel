@@ -1,0 +1,68 @@
+export type RandomFn = () => number;
+
+export const rand: RandomFn = Math.random;
+
+export const chooseWith = <T>(random: RandomFn, array: T[]): T | null => {
+  const i = Math.floor(random() * array.length);
+  return array[i] ?? null;
+};
+
+const id = <T>(x: T): T => x;
+
+/** Get value from  */
+const get = <T extends object, K extends keyof T>(
+  object: T,
+  key: unknown,
+): T[K] | null => {
+  if (key == null) {
+    return null;
+  }
+  const value = object[key as K];
+  if (value == null) {
+    return null;
+  }
+  return value;
+};
+
+const TOKEN = /#(\w+)(\.(\w+))?#/g;
+
+export type Grammar = Record<string, string[]>;
+
+export type ModifierFn = (s: string) => string;
+export type ModifierMap = Record<string, ModifierFn>;
+
+/**
+ * Create a Tracery parser.
+ * Returns a function `flatten(grammar, start='#start#')` which can be used to flatten a grammar.
+ */
+export const parser =
+  ({
+    modifiers = {},
+    random = rand,
+  }: {
+    modifiers?: ModifierMap;
+    random?: RandomFn;
+  } = {}) =>
+  (grammar: Grammar, start = "#start#") => {
+    let depth: number = 0;
+
+    const walk = (text: string): string => {
+      depth++;
+      if (depth > 999) {
+        return text;
+      }
+      return text.replaceAll(TOKEN, (match, key, _, modifier) => {
+        if (grammar[key]) {
+          const branch = chooseWith(random, grammar[key]) ?? "";
+          const text = walk(branch);
+          const postprocess = get(modifiers, modifier) ?? id;
+          return postprocess(text);
+        }
+        return match;
+      });
+    };
+
+    return walk(start);
+  };
+
+export default parser;
