@@ -9,6 +9,7 @@ export const isAlphaNum = (c: string): boolean => {
   );
 };
 
+/** Capitalizes the first letter of every word in the text. */
 export const capitalizeAll = (text: string): string => {
   let s2 = "";
   let capNext = true;
@@ -28,11 +29,18 @@ export const capitalizeAll = (text: string): string => {
   return s2;
 };
 
+/** Capitalizes the first letter of a string. */
 export const capitalize = (text: string): string =>
   text.charAt(0).toUpperCase() + text.substring(1);
 
+/** Converts all characters to lowercase. */
 export const lowercase = (s: string): string => s.toLowerCase();
 
+/**
+ * Adds prefix 'a' or 'an' depending on the text. If text begins with u
+ * followed by i (e.g. unicorn), 'a' prefix is used. Otherwise if text begins
+ * with a vowel sound, 'an' prefix is used. All other cases use 'a' prefix.
+ */
 export const a = (s: string): string => {
   if (s.length > 0) {
     if (s.charAt(0).toLowerCase() === "u") {
@@ -49,6 +57,11 @@ export const a = (s: string): string => {
   return "a " + s;
 };
 
+/**
+ * Modifies the string to a pluralized form. If string ends in 's', 'h', or 'x',
+ * 'es' is appended. If target ends in 'y' and the char before is non-vowel, 'y'
+ * is removed and 'ies' is appended. For all other cases, 's' is appended.
+ */
 export const s = (text: string): string => {
   switch (text.charAt(text.length - 1)) {
     case "":
@@ -70,12 +83,22 @@ export const s = (text: string): string => {
   }
 };
 
+/**
+ * Pluralizes only the first word in the text.
+ * E.g. 'green goblin' -> 'greens goblin'
+ */
 export const firstS = (text: string): string => {
   const s2 = text.split(" ");
   s2[0] = s(s2[0]);
   return s2.join(" ");
 };
 
+/**
+ * Modifies the string to a past participle form.
+ * If text ends in 's', 'h', or 'x', 'ed' is appended. If text ends in 'e', 'd' is appended.
+ * If text ends in 'y' and the char before is non-vowel, 'y' is removed and 'ied' is appended.
+ * For all other cases, 'ed' is appended.
+ */
 export const ed = (s: string): string => {
   switch (s.charAt(s.length - 1)) {
     case "s":

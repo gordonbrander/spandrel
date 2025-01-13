@@ -1,6 +1,6 @@
 /** Seeded random number generator */
 
-export const cyrb128 = (str: string): [number, number, number, number] => {
+const cyrb128 = (str: string): [number, number, number, number] => {
   let h1 = 1779033703,
     h2 = 3144134277,
     h3 = 1013904242,
@@ -21,26 +21,23 @@ export const cyrb128 = (str: string): [number, number, number, number] => {
 };
 
 // https://pracrand.sourceforge.net/RNG_engines.txt
-export const sfc32 =
-  (a: number, b: number, c: number, d: number) => (): number => {
-    a |= 0;
-    b |= 0;
-    c |= 0;
-    d |= 0;
-    const t = (((a + b) | 0) + d) | 0;
-    d = (d + 1) | 0;
-    a = b ^ (b >>> 9);
-    b = (c + (c << 3)) | 0;
-    c = (c << 21) | (c >>> 11);
-    c = (c + t) | 0;
-    return (t >>> 0) / 4294967296;
-  };
+const sfc32 = (a: number, b: number, c: number, d: number) => (): number => {
+  a |= 0;
+  b |= 0;
+  c |= 0;
+  d |= 0;
+  const t = (((a + b) | 0) + d) | 0;
+  d = (d + 1) | 0;
+  a = b ^ (b >>> 9);
+  b = (c + (c << 3)) | 0;
+  c = (c << 21) | (c >>> 11);
+  c = (c + t) | 0;
+  return (t >>> 0) / 4294967296;
+};
 
 export type RandomFn = () => number;
 
-/**
- * Create a random number generator from a seed
- */
+/** Create a random number generator from a seed */
 export const prng = (seed: string): RandomFn => {
   const [a, b, c, d] = cyrb128(seed);
   return sfc32(a, b, c, d);

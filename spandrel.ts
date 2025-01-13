@@ -37,7 +37,15 @@ export type FlattenFn = (grammar: Grammar, start?: string) => string;
 
 /**
  * Create a Tracery parser.
- * Returns a function `flatten(grammar, start='#start#')` which can be called to flatten a grammar.
+ * @returns a function `flatten(grammar, start='#start#')` which can be called to flatten a grammar.
+ * @example
+ * const grammar = {
+ *   start: ["The #creature# #action#."],
+ *   creature: ["cat", "dog", "bird"],
+ *   action: ["jumps", "runs", "flies"]
+ * };
+ * const flatten = parser();
+ * flatten(grammar);
  */
 export const parser = ({
   modifiers = {},
