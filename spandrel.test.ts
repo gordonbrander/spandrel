@@ -1,8 +1,8 @@
 import parser, { chooseWith } from "./spandrel.ts";
-import createRandom from "./prng.ts";
+import prng from "./prng.ts";
 import { assertEquals } from "@std/assert";
 
-const random = createRandom("seed");
+const random = prng("seed");
 
 Deno.test("Spandrel parser", async (t) => {
   await t.step("handles simple substitution", () => {

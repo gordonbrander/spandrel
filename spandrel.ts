@@ -69,11 +69,3 @@ export const parser = ({
 };
 
 export default parser;
-
-/**
- * Do a shallow merge of grammars by key.
- * Values of keys are not merged. Last key wins.
- */
-export const merge = (
-  ...grammars: Grammar[]
-): Grammar => Object.assign({}, ...grammars);

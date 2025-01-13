@@ -39,9 +39,9 @@ export const sfc32 =
 /**
  * Create a random number generator from a seed
  */
-export const rand = (seed: string) => {
+export const prng = (seed: string) => {
   const [a, b, c, d] = cyrb128(seed);
   return sfc32(a, b, c, d);
 };
 
-export default rand;
+export default prng;
