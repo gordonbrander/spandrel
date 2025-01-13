@@ -93,6 +93,17 @@ Deno.test("Spandrel parser", async (t) => {
     };
     assertEquals(spandrel(grammar), "big cat jumps");
   });
+
+  await t.step("gracefully handles infinite recursion", () => {
+    const spandrel = parser();
+
+    const grammar = {
+      "start": ["#start#"],
+    };
+
+    const output = spandrel(grammar);
+    assertEquals(output, "#start#");
+  });
 });
 
 Deno.test("chooseWith", async (t) => {
