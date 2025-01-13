@@ -33,6 +33,7 @@ const TOKEN = /#(\w+)(\.(\w+))?#/g;
 export type Grammar = Record<string, string[]>;
 export type ModifierFn = (s: string) => string;
 export type ModifierMap = Record<string, ModifierFn>;
+export type FlattenFn = (grammar: Grammar, start?: string) => string;
 
 /**
  * Create a Tracery parser.
@@ -44,7 +45,7 @@ export const parser = ({
 }: {
   modifiers?: ModifierMap;
   random?: RandomFn;
-} = {}) =>
+} = {}): FlattenFn =>
 (grammar: Grammar, start = "#start#") => {
   let depth: number = 0;
 

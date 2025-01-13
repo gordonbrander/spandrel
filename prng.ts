@@ -36,10 +36,12 @@ export const sfc32 =
     return (t >>> 0) / 4294967296;
   };
 
+export type RandomFn = () => number;
+
 /**
  * Create a random number generator from a seed
  */
-export const prng = (seed: string) => {
+export const prng = (seed: string): RandomFn => {
   const [a, b, c, d] = cyrb128(seed);
   return sfc32(a, b, c, d);
 };
