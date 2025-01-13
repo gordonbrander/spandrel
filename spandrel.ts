@@ -2,6 +2,7 @@ export type RandomFn = () => number;
 
 export const rand: RandomFn = Math.random;
 
+/** Choose a value from an array using a random function */
 export const chooseWith = <T>(random: RandomFn, array: T[]): T | null => {
   const i = Math.floor(random() * array.length);
   return array[i] ?? null;
@@ -9,7 +10,10 @@ export const chooseWith = <T>(random: RandomFn, array: T[]): T | null => {
 
 const id = <T>(x: T): T => x;
 
-/** Get value from  */
+/**
+ * Get value from object using an unknown key.
+ * @returns value or null if key or value do not exist.
+ */
 const get = <T extends object, K extends keyof T>(
   object: T,
   key: unknown,
@@ -27,42 +31,49 @@ const get = <T extends object, K extends keyof T>(
 const TOKEN = /#(\w+)(\.(\w+))?#/g;
 
 export type Grammar = Record<string, string[]>;
-
 export type ModifierFn = (s: string) => string;
 export type ModifierMap = Record<string, ModifierFn>;
 
 /**
  * Create a Tracery parser.
- * Returns a function `flatten(grammar, start='#start#')` which can be used to flatten a grammar.
+ * Returns a function `flatten(grammar, start='#start#')` which can be called to flatten a grammar.
  */
-export const parser =
-  ({
-    modifiers = {},
-    random = rand,
-  }: {
-    modifiers?: ModifierMap;
-    random?: RandomFn;
-  } = {}) =>
-  (grammar: Grammar, start = "#start#") => {
-    let depth: number = 0;
+export const parser = ({
+  modifiers = {},
+  random = rand,
+}: {
+  modifiers?: ModifierMap;
+  random?: RandomFn;
+} = {}) =>
+(grammar: Grammar, start = "#start#") => {
+  let depth: number = 0;
 
-    const walk = (text: string): string => {
-      depth++;
-      if (depth > 999) {
-        return text;
+  const walk = (text: string): string => {
+    depth++;
+    if (depth > 999) {
+      return text;
+    }
+    return text.replaceAll(TOKEN, (match, key, _, modifier) => {
+      const branch = get(grammar, key);
+      if (branch) {
+        const leaf = chooseWith(random, branch) ?? "";
+        const text = walk(leaf);
+        const postprocess = get(modifiers, modifier) ?? id;
+        return postprocess(text);
       }
-      return text.replaceAll(TOKEN, (match, key, _, modifier) => {
-        if (grammar[key]) {
-          const branch = chooseWith(random, grammar[key]) ?? "";
-          const text = walk(branch);
-          const postprocess = get(modifiers, modifier) ?? id;
-          return postprocess(text);
-        }
-        return match;
-      });
-    };
-
-    return walk(start);
+      return match;
+    });
   };
 
+  return walk(start);
+};
+
 export default parser;
+
+/**
+ * Do a shallow merge of grammars by key.
+ * Values of keys are not merged. Last key wins.
+ */
+export const merge = (
+  ...grammars: Grammar[]
+): Grammar => Object.assign({}, ...grammars);

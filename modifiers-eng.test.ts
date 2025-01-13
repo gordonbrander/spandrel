@@ -1,12 +1,12 @@
 import {
-  isVowel,
-  isAlphaNum,
   capitalize,
   capitalizeAll,
+  ed,
+  firstS,
+  isAlphaNum,
+  isVowel,
   lowercase,
   s,
-  firstS,
-  ed,
 } from "./modifiers-eng.ts";
 import { assertEquals } from "@std/assert";
 

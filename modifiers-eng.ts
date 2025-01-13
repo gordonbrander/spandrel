@@ -1,5 +1,5 @@
 export const isVowel = (c: string): boolean => {
-  let c2 = c.toLowerCase();
+  const c2 = c.toLowerCase();
   return c2 === "a" || c2 === "e" || c2 === "i" || c2 === "o" || c2 === "u";
 };
 
