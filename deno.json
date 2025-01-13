@@ -1,5 +1,9 @@
 {
+  "name": "@gordonb/spandrel",
+  "version": "0.0.1",
+  "license": "MIT",
   "tasks": {},
+  "exports": "./main.ts",
   "imports": {
     "@std/assert": "jsr:@std/assert@1"
   }
