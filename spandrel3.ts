@@ -19,8 +19,7 @@ export type Token =
   | Action
   | Text;
 
-export const ActionRegex = /\[([^:]+):([^\]]+)\]/;
-export const RuleRegex = /#([^#]+)#/;
+const RuleRegex = /#([^#]+)#/;
 
 function* consumeRule(state: ParserState): Generator<Token> {
   save(state);
@@ -41,6 +40,8 @@ function* consumeRule(state: ParserState): Generator<Token> {
   }
   backtrack(state);
 }
+
+const ActionRegex = /\[([^:]+):([^\]]+)\]/;
 
 function* consumeAction(state: ParserState): Generator<Token> {
   save(state);
@@ -63,7 +64,7 @@ function* consumeAction(state: ParserState): Generator<Token> {
   return;
 }
 
-export function* consumeText(state: ParserState): Generator<Token> {
+function* consumeText(state: ParserState): Generator<Token> {
   while (!isExhausted(state)) {
     const char = peek(state);
     if (char === "#" || char === "[") {
