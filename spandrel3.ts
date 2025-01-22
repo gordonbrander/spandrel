@@ -10,9 +10,19 @@ import {
 
 import { map } from "./generator.ts";
 
-export type Rule = { type: "rule"; key: string; modifiers: Array<string> };
-export type Action = { type: "action"; key: string; value: string };
-export type Text = { type: "text"; value: string };
+export type Rule = {
+  type: "rule";
+  text: string;
+  key: string;
+  modifiers: Array<string>;
+};
+export type Action = {
+  type: "action";
+  text: string;
+  key: string;
+  value: string;
+};
+export type Text = { type: "text"; text: string };
 
 export type Token =
   | Rule
@@ -26,12 +36,13 @@ function* consumeRule(state: ParserState): Generator<Token> {
   while (!isExhausted(state)) {
     const char = take(state);
     if (char === "#") {
-      const slice = cut(state);
-      const match = slice.match(RuleRegex);
+      const text = cut(state);
+      const match = text.match(RuleRegex);
       if (!match) return;
       const parts = match[1].split(".");
       yield {
         type: "rule",
+        text,
         key: parts[0],
         modifiers: parts.slice(1),
       };
@@ -48,12 +59,13 @@ function* consumeAction(state: ParserState): Generator<Token> {
   while (!isExhausted(state)) {
     const char = take(state);
     if (char === "]") {
-      const slice = cut(state);
-      const match = slice.match(ActionRegex);
+      const text = cut(state);
+      const match = text.match(ActionRegex);
       if (!match) return;
       const [_all, key, value] = match;
       yield {
         type: "action",
+        text,
         key,
         value,
       };
@@ -76,7 +88,7 @@ function* consumeText(state: ParserState): Generator<Token> {
   const text = cut(state);
   yield {
     type: "text",
-    value: text,
+    text: text,
   };
 }
 
@@ -150,7 +162,7 @@ const pipeModifiers = (
   modifiers: Array<ModifierFn>,
 ) => modifiers.reduce((acc, fn) => fn(acc), text);
 
-const renderText = (text: Text): string => text.value;
+const renderText = (text: Text): string => text.text;
 
 /**
  * Create a Tracery parser.
@@ -175,7 +187,10 @@ export const parser = ({
   const state: Grammar = { ...grammar };
 
   const renderRule = (rule: Rule): string => {
-    const branch = get(state, rule.key) ?? [];
+    const branch = get(state, rule.key);
+    if (branch == null) {
+      return rule.text;
+    }
     const leaf = chooseWith(random, branch) ?? "";
     const text = render(leaf);
     const mods = getModifiers(modifiers, rule.modifiers);
@@ -187,7 +202,16 @@ export const parser = ({
     return "";
   };
 
+  let depth = 0;
+
   const render = (leaf: string): string => {
+    // Prevent call stack overflows. This can happen due to infinitely
+    // recursive rules, or cycles.
+    depth++;
+    if (depth > 999) {
+      return leaf;
+    }
+
     const parts = map(parseRule(leaf), (token) => {
       switch (token.type) {
         case "rule":
@@ -200,6 +224,7 @@ export const parser = ({
           throw new Error("Switch should be exhaustive");
       }
     });
+
     return Array.from(parts).join("");
   };
 

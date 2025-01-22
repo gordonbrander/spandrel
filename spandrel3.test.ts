@@ -3,75 +3,85 @@ import { assertEquals } from "@std/assert";
 import prng from "./prng.ts";
 
 Deno.test("tokenizeRule", async (t) => {
-  await t.step("tokenizeRule - simple text", () => {
+  await t.step("simple text", () => {
     const input = "Hello world";
     const tokens = Array.from(parseRule(input));
     assertEquals(tokens, [
-      { type: "text", value: "Hello world" },
+      { type: "text", text: "Hello world" },
     ]);
   });
 
-  await t.step("tokenizeRule - single rule", () => {
+  await t.step("single rule", () => {
     const input = "#name#";
     const tokens = Array.from(parseRule(input));
     assertEquals(tokens, [
-      { type: "rule", key: "name", modifiers: [] },
+      { type: "rule", text: "#name#", key: "name", modifiers: [] },
     ]);
   });
 
-  await t.step("tokenizeRule - rule with modifiers", () => {
+  await t.step("rule with modifiers", () => {
     const input = "#name.uppercase.trim#";
     const tokens = Array.from(parseRule(input));
     assertEquals(tokens, [
-      { type: "rule", key: "name", modifiers: ["uppercase", "trim"] },
+      {
+        type: "rule",
+        text: "#name.uppercase.trim#",
+        key: "name",
+        modifiers: ["uppercase", "trim"],
+      },
     ]);
   });
 
-  await t.step("tokenizeRule - single action", () => {
+  await t.step("single action", () => {
     const input = "[set:value]";
     const tokens = Array.from(parseRule(input));
     assertEquals(tokens, [
-      { type: "action", key: "set", value: "value" },
+      { type: "action", text: "[set:value]", key: "set", value: "value" },
     ]);
   });
 
-  await t.step("tokenizeRule - mixed content", () => {
+  await t.step("mixed content", () => {
     const input = "Hello #name#! [set:greeting]";
     const tokens = Array.from(parseRule(input));
     assertEquals(tokens, [
-      { type: "text", value: "Hello " },
-      { type: "rule", key: "name", modifiers: [] },
-      { type: "text", value: "! " },
-      { type: "action", key: "set", value: "greeting" },
+      { type: "text", text: "Hello " },
+      { type: "rule", text: "#name#", key: "name", modifiers: [] },
+      { type: "text", text: "! " },
+      { type: "action", text: "[set:greeting]", key: "set", value: "greeting" },
     ]);
   });
 
-  await t.step("tokenizeRule - invalid action format", () => {
+  await t.step("invalid action format", () => {
     const input = "[invalid]";
     const tokens = Array.from(parseRule(input));
     assertEquals(tokens, []);
   });
 
-  await t.step("tokenizeRule - unclosed rule", () => {
+  await t.step("unclosed rule", () => {
     const input = "#unclosed";
     const tokens = Array.from(parseRule(input));
     assertEquals(tokens, [
-      { type: "text", value: "#unclosed" },
+      { type: "text", text: "#unclosed" },
     ]);
   });
 
-  await t.step("tokenizeRule - complex mixed content", () => {
+  await t.step("complex mixed content", () => {
     const input =
       "Hello #name.uppercase#! How are you? [set:greeting] #age# years old";
     const tokens = Array.from(parseRule(input));
     assertEquals(tokens, [
-      { type: "text", value: "Hello " },
-      { type: "rule", key: "name", modifiers: ["uppercase"] },
-      { type: "text", value: "! How are you? " },
-      { type: "action", key: "set", value: "greeting" },
-      { type: "text", value: " " },
-      { type: "rule", key: "age", modifiers: [] },
-      { type: "text", value: " years old" },
+      { type: "text", text: "Hello " },
+      {
+        type: "rule",
+        text: "#name.uppercase#",
+        key: "name",
+        modifiers: ["uppercase"],
+      },
+      { type: "text", text: "! How are you? " },
+      { type: "action", text: "[set:greeting]", key: "set", value: "greeting" },
+      { type: "text", text: " " },
+      { type: "rule", text: "#age#", key: "age", modifiers: [] },
+      { type: "text", text: " years old" },
     ]);
   });
 });
