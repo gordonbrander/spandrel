@@ -92,6 +92,14 @@ function* consumeText(state: ParserState): Generator<Token> {
   };
 }
 
+/**
+ * Parse a Tracery rule into a sequence of tokens. Tracery uses a simple grammar
+ * with three token types:
+ *  - Rule: `#any.mod1.mod2#` - Expand a key from the grammar with optional modifiers
+ *  - Action: `[key:value]` - Set a key in the grammar
+ *  - Text: Any plain text between rules/actions
+ * @param rule The tracery rule string to parse
+ */
 export function* parseRule(
   rule: string,
 ): Generator<Token> {
@@ -125,24 +133,6 @@ export const rand: RandomFn = Math.random;
 export const chooseWith = <T>(random: RandomFn, array: T[]): T | null => {
   const i = Math.floor(random() * array.length);
   return array[i] ?? null;
-};
-
-/**
- * Get value from object using an unknown key.
- * @returns value or null if key or value do not exist.
- */
-const get = <T extends object, K extends keyof T>(
-  object: T,
-  key: unknown,
-): T[K] | null => {
-  if (key == null) {
-    return null;
-  }
-  const value = object[key as K];
-  if (value == null) {
-    return null;
-  }
-  return value;
 };
 
 export type Grammar = Record<string, string[]>;
@@ -187,7 +177,7 @@ export const parser = ({
   const state: Grammar = { ...grammar };
 
   const renderRule = (rule: Rule): string => {
-    const branch = get(state, rule.key);
+    const branch = state[rule.key];
     if (branch == null) {
       return rule.text;
     }
@@ -221,7 +211,7 @@ export const parser = ({
         case "text":
           return renderText(token);
         default:
-          throw new Error("Switch should be exhaustive");
+          throw new Error("Unknown token type");
       }
     });
 
