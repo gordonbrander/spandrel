@@ -1,3 +1,15 @@
-export * from "./spandrel.ts";
-export * as eng from "./modifiers-eng.ts";
+import parser from "./spandrel.ts";
+export default parser;
+
+export {
+  type FlattenFn,
+  type Grammar,
+  type ModifierFn,
+  type ModifierMap,
+  parser,
+  type RandomFn,
+} from "./spandrel.ts";
+
+export { eng } from "./modifiers-eng.ts";
+
 export { prng } from "./prng.ts";

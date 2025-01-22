@@ -1,14 +1,98 @@
-import parser, { chooseWith } from "./spandrel.ts";
-import prng from "./prng.ts";
+import { chooseWith, parser, parseRule } from "./spandrel.ts";
 import { assertEquals } from "@std/assert";
+import prng from "./prng.ts";
 
-const random = prng("seed");
+Deno.test("tokenizeRule", async (t) => {
+  await t.step("simple text", () => {
+    const input = "Hello world";
+    const tokens = Array.from(parseRule(input));
+    assertEquals(tokens, [
+      { type: "text", text: "Hello world" },
+    ]);
+  });
+
+  await t.step("single rule", () => {
+    const input = "#name#";
+    const tokens = Array.from(parseRule(input));
+    assertEquals(tokens, [
+      { type: "rule", text: "#name#", key: "name", modifiers: [] },
+    ]);
+  });
+
+  await t.step("rule with modifiers", () => {
+    const input = "#name.uppercase.trim#";
+    const tokens = Array.from(parseRule(input));
+    assertEquals(tokens, [
+      {
+        type: "rule",
+        text: "#name.uppercase.trim#",
+        key: "name",
+        modifiers: ["uppercase", "trim"],
+      },
+    ]);
+  });
+
+  await t.step("single action", () => {
+    const input = "[set:value]";
+    const tokens = Array.from(parseRule(input));
+    assertEquals(tokens, [
+      { type: "action", text: "[set:value]", key: "set", value: "value" },
+    ]);
+  });
+
+  await t.step("mixed content", () => {
+    const input = "Hello #name#! [set:greeting]";
+    const tokens = Array.from(parseRule(input));
+    assertEquals(tokens, [
+      { type: "text", text: "Hello " },
+      { type: "rule", text: "#name#", key: "name", modifiers: [] },
+      { type: "text", text: "! " },
+      { type: "action", text: "[set:greeting]", key: "set", value: "greeting" },
+    ]);
+  });
+
+  await t.step("invalid action format", () => {
+    const input = "[invalid]";
+    const tokens = Array.from(parseRule(input));
+    assertEquals(tokens, []);
+  });
+
+  await t.step("unclosed rule", () => {
+    const input = "#unclosed";
+    const tokens = Array.from(parseRule(input));
+    assertEquals(tokens, [
+      { type: "text", text: "#unclosed" },
+    ]);
+  });
+
+  await t.step("complex mixed content", () => {
+    const input =
+      "Hello #name.uppercase#! How are you? [set:greeting] #age# years old";
+    const tokens = Array.from(parseRule(input));
+    assertEquals(tokens, [
+      { type: "text", text: "Hello " },
+      {
+        type: "rule",
+        text: "#name.uppercase#",
+        key: "name",
+        modifiers: ["uppercase"],
+      },
+      { type: "text", text: "! How are you? " },
+      { type: "action", text: "[set:greeting]", key: "set", value: "greeting" },
+      { type: "text", text: " " },
+      { type: "rule", text: "#age#", key: "age", modifiers: [] },
+      { type: "text", text: " years old" },
+    ]);
+  });
+});
 
 Deno.test("Spandrel parser", async (t) => {
+  const random = prng("seed");
+
   await t.step("handles simple substitution", () => {
     const spandrel = parser({ random });
     const grammar = {
-      start: ["hello"],
+      origin: ["hello"],
     };
     assertEquals(spandrel(grammar), "hello");
   });
@@ -16,7 +100,7 @@ Deno.test("Spandrel parser", async (t) => {
   await t.step("handles multiple choices", () => {
     const spandrel = parser({ random });
     const grammar = {
-      start: ["a", "b", "c"],
+      origin: ["a", "b", "c"],
     };
     // With our seeded random, we can expect consistent output
     assertEquals(spandrel(grammar), "b");
@@ -25,14 +109,14 @@ Deno.test("Spandrel parser", async (t) => {
   await t.step("handles nested substitutions", () => {
     const spandrel = parser({ random });
     const grammar = {
-      start: ["The #animal# #verb#"],
+      origin: ["The #animal# #verb#"],
       animal: ["cat", "dog"],
       verb: ["jumps", "runs"],
     };
     assertEquals(spandrel(grammar), "The dog jumps");
   });
 
-  await t.step("handles custom start symbol", () => {
+  await t.step("handles custom origin symbol", () => {
     const spandrel = parser({ random });
     const grammar = {
       greeting: ["hello", "hi"],
@@ -43,7 +127,7 @@ Deno.test("Spandrel parser", async (t) => {
   await t.step("preserves unknown tokens", () => {
     const spandrel = parser({ random });
     const grammar = {
-      start: ["hello #nonexistent#"],
+      origin: ["hello #nonexistent#"],
     };
     assertEquals(spandrel(grammar), "hello #nonexistent#");
   });
@@ -57,7 +141,7 @@ Deno.test("Spandrel parser", async (t) => {
     });
 
     const grammar = {
-      start: ["#word.upper#"],
+      origin: ["#word.upper#"],
       word: ["hello"],
     };
     assertEquals(customSpandrel(grammar), "HELLO");
@@ -66,7 +150,7 @@ Deno.test("Spandrel parser", async (t) => {
   await t.step("handles deep recursion gracefully", () => {
     const spandrel = parser({ random });
     const grammar = {
-      start: ["#a#"],
+      origin: ["#a#"],
       a: ["#b#"],
       b: ["#a#"],
     };
@@ -78,7 +162,7 @@ Deno.test("Spandrel parser", async (t) => {
   await t.step("handles empty arrays", () => {
     const spandrel = parser({ random });
     const grammar = {
-      start: [],
+      origin: [],
     };
     assertEquals(spandrel(grammar), "");
   });
@@ -86,7 +170,7 @@ Deno.test("Spandrel parser", async (t) => {
   await t.step("handles multiple tokens in same string", () => {
     const spandrel = parser({ random });
     const grammar = {
-      start: ["#adj# #noun# #verb#"],
+      origin: ["#adj# #noun# #verb#"],
       adj: ["big"],
       noun: ["cat"],
       verb: ["jumps"],
@@ -98,15 +182,17 @@ Deno.test("Spandrel parser", async (t) => {
     const spandrel = parser();
 
     const grammar = {
-      "start": ["#start#"],
+      "origin": ["#origin#"],
     };
 
     const output = spandrel(grammar);
-    assertEquals(output, "#start#");
+    assertEquals(output, "#origin#");
   });
 });
 
 Deno.test("chooseWith", async (t) => {
+  const random = prng("seed");
+
   await t.step("picks from array", () => {
     const arr = ["a", "b", "c"];
     assertEquals(chooseWith(random, arr), "a");

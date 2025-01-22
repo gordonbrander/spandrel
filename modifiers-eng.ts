@@ -119,3 +119,15 @@ export const ed = (s: string): string => {
       return s + "ed";
   }
 };
+
+export const eng = Object.freeze({
+  a,
+  s,
+  ed,
+  capitalize,
+  capitalizeAll,
+  firstS,
+  lowercase,
+});
+
+export default eng;

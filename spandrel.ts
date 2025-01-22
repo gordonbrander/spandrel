@@ -1,3 +1,127 @@
+import {
+  backtrack,
+  cut,
+  isExhausted,
+  type ParserState,
+  peek,
+  save,
+  take,
+} from "./parser.ts";
+
+export type Rule = {
+  type: "rule";
+  text: string;
+  key: string;
+  modifiers: Array<string>;
+};
+
+export type Action = {
+  type: "action";
+  text: string;
+  key: string;
+  value: string;
+};
+
+export type Text = { type: "text"; text: string };
+
+export type Token = Rule | Action | Text;
+
+const RuleRegex = /#([^#]+)#/;
+
+function* consumeRule(state: ParserState): Generator<Token> {
+  save(state);
+  while (!isExhausted(state)) {
+    const char = take(state);
+    if (char === "#") {
+      const text = cut(state);
+      const match = text.match(RuleRegex);
+      if (!match) return;
+      const parts = match[1].split(".");
+      yield {
+        type: "rule",
+        text,
+        key: parts[0],
+        modifiers: parts.slice(1),
+      };
+      return;
+    }
+  }
+  backtrack(state);
+}
+
+const ActionRegex = /\[([^:]+):([^\]]+)\]/;
+
+function* consumeAction(state: ParserState): Generator<Token> {
+  save(state);
+  while (!isExhausted(state)) {
+    const char = take(state);
+    if (char === "]") {
+      const text = cut(state);
+      const match = text.match(ActionRegex);
+      if (!match) return;
+      const [_all, key, value] = match;
+      yield {
+        type: "action",
+        text,
+        key,
+        value,
+      };
+      return;
+    }
+  }
+  backtrack(state);
+  return;
+}
+
+function* consumeText(state: ParserState): Generator<Token> {
+  while (!isExhausted(state)) {
+    const char = peek(state);
+    if (char === "#" || char === "[") {
+      break;
+    }
+    take(state);
+  }
+
+  const text = cut(state);
+  yield {
+    type: "text",
+    text: text,
+  };
+}
+
+/**
+ * Parse a Tracery rule into a sequence of tokens. Tracery uses a simple grammar
+ * with three token types:
+ *  - Rule: `#any.mod1.mod2#` - Expand a key from the grammar with optional modifiers
+ *  - Action: `[key:value]` - Set a key in the grammar
+ *  - Text: Any plain text between rules/actions
+ * @param rule The tracery rule string to parse
+ */
+export function* parseRule(
+  rule: string,
+): Generator<Token> {
+  const state: ParserState = {
+    text: rule,
+    from: 0,
+    to: 0,
+    saved: 0,
+  };
+
+  while (!isExhausted(state)) {
+    const char = take(state);
+    if (char === "#") {
+      yield* consumeRule(state);
+      continue;
+    } else if (char === "[") {
+      yield* consumeAction(state);
+      continue;
+    } else {
+      yield* consumeText(state);
+      continue;
+    }
+  }
+}
+
 export type RandomFn = () => number;
 
 export const rand: RandomFn = Math.random;
@@ -8,36 +132,28 @@ export const chooseWith = <T>(random: RandomFn, array: T[]): T | null => {
   return array[i] ?? null;
 };
 
-const id = <T>(x: T): T => x;
-
-/**
- * Get value from object using an unknown key.
- * @returns value or null if key or value do not exist.
- */
-const get = <T extends object, K extends keyof T>(
-  object: T,
-  key: unknown,
-): T[K] | null => {
-  if (key == null) {
-    return null;
-  }
-  const value = object[key as K];
-  if (value == null) {
-    return null;
-  }
-  return value;
-};
-
-const TOKEN = /#(\w+)(\.(\w+))?#/g;
-
 export type Grammar = Record<string, string[]>;
 export type ModifierFn = (s: string) => string;
 export type ModifierMap = Record<string, ModifierFn>;
 export type FlattenFn = (grammar: Grammar, start?: string) => string;
 
+const id = <T>(value: T): T => value;
+
+/** Get modifiers for keys, falling back on `id` if there isn't one for that key. */
+const getModifiers = (
+  registry: ModifierMap,
+  modifiers: Array<string>,
+): Array<ModifierFn> => modifiers.map((key) => registry[key] ?? id);
+
+/** Pipe text through modifiers */
+const pipeThroughModifiers = (
+  text: string,
+  modifiers: Array<ModifierFn>,
+) => modifiers.reduce((acc, fn) => fn(acc), text);
+
 /**
  * Create a Tracery parser.
- * @returns a function `flatten(grammar, start='#start#')` which can be called to flatten a grammar.
+ * @returns a function `flatten(grammar, origin='#origin#')` which can be called to flatten a grammar.
  * @example
  * const grammar = {
  *   start: ["The #creature# #action#."],
@@ -54,27 +170,55 @@ export const parser = ({
   modifiers?: ModifierMap;
   random?: RandomFn;
 } = {}): FlattenFn =>
-(grammar: Grammar, start = "#start#") => {
-  let depth: number = 0;
+(grammar: Grammar, origin = "#origin#") => {
+  // Copy grammar. It will get mutated by actions.
+  const state: Grammar = { ...grammar };
 
-  const walk = (text: string): string => {
-    depth++;
-    if (depth > 999) {
-      return text;
+  const renderRule = (rule: Rule): string => {
+    const branch = state[rule.key];
+    // If there is no branch for this key, just return the original tag text, unchanged.
+    if (branch == null) {
+      return rule.text;
     }
-    return text.replaceAll(TOKEN, (match, key, _, modifier) => {
-      const branch = get(grammar, key);
-      if (branch) {
-        const leaf = chooseWith(random, branch) ?? "";
-        const text = walk(leaf);
-        const postprocess = get(modifiers, modifier) ?? id;
-        return postprocess(text);
-      }
-      return match;
-    });
+    const leaf = chooseWith(random, branch) ?? "";
+    const text = render(leaf);
+    const mods = getModifiers(modifiers, rule.modifiers);
+    return pipeThroughModifiers(text, mods);
   };
 
-  return walk(start);
+  const renderAction = (action: Action): string => {
+    state[action.key] = [action.value];
+    return "";
+  };
+
+  const renderText = (text: Text): string => text.text;
+
+  // Keep track of render call stack depth
+  let depth = 0;
+  const render = (leaf: string): string => {
+    // Prevent call stack overflows. This can happen due to infinitely
+    // recursive rules, or cycles.
+    depth++;
+    if (depth > 999) {
+      return leaf;
+    }
+
+    const tokens = parseRule(leaf);
+    return Array.from(tokens).map((token) => {
+      switch (token.type) {
+        case "rule":
+          return renderRule(token);
+        case "action":
+          return renderAction(token);
+        case "text":
+          return renderText(token);
+        default:
+          throw new Error("Unknown token type");
+      }
+    }).join("");
+  };
+
+  return render(origin);
 };
 
 export default parser;
