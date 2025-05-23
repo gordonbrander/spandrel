@@ -1,3 +1,5 @@
+import type { ModifierMap } from "./spandrel.ts";
+
 export const isVowel = (c: string): boolean => {
   const c2 = c.toLowerCase();
   return c2 === "a" || c2 === "e" || c2 === "i" || c2 === "o" || c2 === "u";
@@ -123,7 +125,7 @@ export const ed = (s: string): string => {
   }
 };
 
-export const modifiers = Object.freeze({
+export const modifiers: ModifierMap = Object.freeze({
   capitalizeAll,
   capitalize,
   lowercase,
