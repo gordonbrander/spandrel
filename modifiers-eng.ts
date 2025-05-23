@@ -36,6 +36,9 @@ export const capitalize = (text: string): string =>
 /** Converts all characters to lowercase. */
 export const lowercase = (s: string): string => s.toLowerCase();
 
+/** Converts all characters to uppercase. */
+export const uppercase = (s: string): string => s.toUpperCase();
+
 /**
  * Adds prefix 'a' or 'an' depending on the text. If text begins with u
  * followed by i (e.g. unicorn), 'a' prefix is used. Otherwise if text begins
@@ -119,3 +122,16 @@ export const ed = (s: string): string => {
       return s + "ed";
   }
 };
+
+export const modifiers = Object.freeze({
+  capitalizeAll,
+  capitalize,
+  lowercase,
+  uppercase,
+  a,
+  s,
+  firstS,
+  ed,
+});
+
+export default modifiers;
